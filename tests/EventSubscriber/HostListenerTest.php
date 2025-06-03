@@ -5,7 +5,8 @@ namespace Tourze\DoctrineHostnameBundle\Tests\EventSubscriber;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Event\PrePersistEventArgs;
 use Doctrine\ORM\Event\PreUpdateEventArgs;
-use Doctrine\Persistence\Mapping\ClassMetadata;
+use Doctrine\ORM\Mapping\ClassMetadata;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use ReflectionClass;
@@ -18,10 +19,10 @@ use Tourze\DoctrineHostnameBundle\EventSubscriber\HostListener;
 class HostListenerTest extends TestCase
 {
     private PropertyAccessor $propertyAccessor;
-    private LoggerInterface $logger;
+    private LoggerInterface&MockObject $logger;
     private HostListener $hostListener;
-    private EntityManagerInterface $objectManager;
-    private ClassMetadata $classMetadata;
+    private EntityManagerInterface&MockObject $objectManager;
+    private ClassMetadata&MockObject $classMetadata;
 
     protected function setUp(): void
     {
@@ -29,7 +30,7 @@ class HostListenerTest extends TestCase
         $this->logger = $this->createMock(LoggerInterface::class);
         $this->hostListener = new HostListener($this->propertyAccessor, $this->logger);
         $this->objectManager = $this->createMock(EntityManagerInterface::class);
-        $this->classMetadata = $this->createMock(ClassMetadata::class);
+        $this->classMetadata = $this->createPartialMock(ClassMetadata::class, ['getReflectionClass']);
 
         $this->objectManager->method('getClassMetadata')->willReturn($this->classMetadata);
     }
@@ -58,7 +59,16 @@ class HostListenerTest extends TestCase
         $entity = new class() {
             #[CreatedInHostColumn]
             private ?string $createdHost = null;
-            public function getCreatedHost(): ?string { return $this->createdHost; }
+            
+            public function getCreatedHost(): ?string 
+            { 
+                return $this->createdHost; 
+            }
+            
+            public function setCreatedHost(?string $createdHost): void 
+            { 
+                $this->createdHost = $createdHost; 
+            }
         };
 
         $reflectionClassMock = $this->createMock(ReflectionClass::class);
@@ -82,8 +92,21 @@ class HostListenerTest extends TestCase
         $entity = new class($initialHostname) {
             #[CreatedInHostColumn]
             private ?string $createdHost;
-            public function __construct(string $host) { $this->createdHost = $host; }
-            public function getCreatedHost(): ?string { return $this->createdHost; }
+            
+            public function __construct(string $host) 
+            { 
+                $this->createdHost = $host; 
+            }
+            
+            public function getCreatedHost(): ?string 
+            { 
+                return $this->createdHost; 
+            }
+            
+            public function setCreatedHost(?string $createdHost): void 
+            { 
+                $this->createdHost = $createdHost; 
+            }
         };
 
         $reflectionClassMock = $this->createMock(ReflectionClass::class);
@@ -107,7 +130,16 @@ class HostListenerTest extends TestCase
     {
         $entity = new class() {
             private ?string $someOtherProperty = null;
-            public function getSomeOtherProperty(): ?string { return $this->someOtherProperty; }
+            
+            public function getSomeOtherProperty(): ?string 
+            { 
+                return $this->someOtherProperty; 
+            }
+            
+            public function setSomeOtherProperty(?string $someOtherProperty): void 
+            { 
+                $this->someOtherProperty = $someOtherProperty; 
+            }
         };
 
         $reflectionClassMock = $this->createMock(ReflectionClass::class);
@@ -129,6 +161,16 @@ class HostListenerTest extends TestCase
         $entity = new class() {
             #[CreatedInHostColumn]
             private ?string $createdHost = null;
+            
+            public function getCreatedHost(): ?string 
+            { 
+                return $this->createdHost; 
+            }
+            
+            public function setCreatedHost(?string $createdHost): void 
+            { 
+                $this->createdHost = $createdHost; 
+            }
         };
 
         $reflectionClassMock = $this->createMock(ReflectionClass::class);
@@ -159,7 +201,16 @@ class HostListenerTest extends TestCase
         $entity = new class() {
             #[UpdatedInHostColumn]
             private ?string $updatedHost = null;
-            public function getUpdatedHost(): ?string { return $this->updatedHost; }
+            
+            public function getUpdatedHost(): ?string 
+            { 
+                return $this->updatedHost; 
+            }
+            
+            public function setUpdatedHost(?string $updatedHost): void 
+            { 
+                $this->updatedHost = $updatedHost; 
+            }
         };
 
         $reflectionClassMock = $this->createMock(ReflectionClass::class);
@@ -183,7 +234,16 @@ class HostListenerTest extends TestCase
         $entity = new class() {
             #[UpdatedInHostColumn]
             private ?string $updatedHost = 'initial.host';
-            public function getUpdatedHost(): ?string { return $this->updatedHost; }
+            
+            public function getUpdatedHost(): ?string 
+            { 
+                return $this->updatedHost; 
+            }
+            
+            public function setUpdatedHost(?string $updatedHost): void 
+            { 
+                $this->updatedHost = $updatedHost; 
+            }
         };
 
         // No reflection mocks needed here as preUpdate should return early if changeset is empty
@@ -199,6 +259,16 @@ class HostListenerTest extends TestCase
     {
         $entity = new class() {
             private ?string $someOtherProperty = null;
+            
+            public function getSomeOtherProperty(): ?string 
+            { 
+                return $this->someOtherProperty; 
+            }
+            
+            public function setSomeOtherProperty(?string $someOtherProperty): void 
+            { 
+                $this->someOtherProperty = $someOtherProperty; 
+            }
         };
 
         $reflectionClassMock = $this->createMock(ReflectionClass::class);
@@ -213,7 +283,7 @@ class HostListenerTest extends TestCase
         $eventArgs = new PreUpdateEventArgs($entity, $this->objectManager, $changeSet);
         $this->hostListener->preUpdate($eventArgs);
 
-        $this->assertNull($this->propertyAccessor->getValue($entity, 'someOtherProperty')); // Assuming it's accessible for assertion
+        $this->assertNull($entity->getSomeOtherProperty()); // 直接使用 getter 方法
     }
     
     public function testPreUpdate_logsWhenHostnameIsSet(): void
@@ -221,6 +291,16 @@ class HostListenerTest extends TestCase
         $entity = new class() {
             #[UpdatedInHostColumn]
             private ?string $updatedHost = null;
+            
+            public function getUpdatedHost(): ?string 
+            { 
+                return $this->updatedHost; 
+            }
+            
+            public function setUpdatedHost(?string $updatedHost): void 
+            { 
+                $this->updatedHost = $updatedHost; 
+            }
         };
 
         $reflectionClassMock = $this->createMock(ReflectionClass::class);
