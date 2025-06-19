@@ -40,7 +40,7 @@ class HostListener implements EntityCheckerInterface
 
             try {
                 $oldValue = $this->propertyAccessor->getValue($entity, $property->getName());
-                if ($oldValue) {
+                if ($oldValue !== null && $oldValue !== '' && $oldValue !== false) {
                     continue;
                 }
             } catch (UninitializedPropertyException $exception) {
@@ -50,7 +50,7 @@ class HostListener implements EntityCheckerInterface
 
             $hostname = gethostname();
             $this->logger?->debug('设置创建host', [
-                'className' => $entity::class,
+                'className' => get_class($entity),
                 'entity' => $entity,
                 'time' => $hostname,
                 'property' => $property,
@@ -77,7 +77,7 @@ class HostListener implements EntityCheckerInterface
             }
             $hostname = gethostname();
             $this->logger?->debug('设置更新host', [
-                'className' => $entity::class,
+                'className' => get_class($entity),
                 'entity' => $entity,
                 'time' => $hostname,
             ]);
