@@ -35,23 +35,6 @@ class HostListenerTest extends TestCase
         $this->objectManager->method('getClassMetadata')->willReturn($this->classMetadata);
     }
 
-    private function createEntityWithProperties(array $propertiesConfig): object
-    {
-        $entity = new class() {};
-        $reflectionClass = new ReflectionClass($entity);
-
-        foreach ($propertiesConfig as $propName => $attributesAndValue) {
-            if (!$reflectionClass->hasProperty($propName)) {
-                $reflectionProperty = $reflectionClass->getProperty($propName) ?? new class($propName) extends ReflectionProperty { public function __construct(string $name) { parent::__construct(self::class, $name); } }; // Simplified mock
-                // This is a simplified way to add properties dynamically for testing, real entities would be defined classes.
-            }
-            // For testing purposes, we assume properties exist or can be mocked.
-            // Actual entity properties would be defined with attributes.
-        }
-        // This part needs a more robust way to simulate entities with attributes for testing.
-        // For now, we'll focus on the listener's logic assuming reflection works as expected.
-        return $entity;
-    }
 
     // Test prePersist with CreatedInHostColumn
     public function testPrePersist_withCreatedInHostColumn_setsHostnameWhenNull(): void

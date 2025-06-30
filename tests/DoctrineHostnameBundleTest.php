@@ -12,7 +12,6 @@ class DoctrineHostnameBundleTest extends TestCase
     {
         $dependencies = DoctrineHostnameBundle::getBundleDependencies();
 
-        $this->assertIsArray($dependencies);
         $this->assertArrayHasKey(DoctrineEntityCheckerBundle::class, $dependencies);
         $this->assertEquals(['all' => true], $dependencies[DoctrineEntityCheckerBundle::class]);
     }
