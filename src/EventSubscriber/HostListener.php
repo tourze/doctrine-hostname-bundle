@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tourze\DoctrineHostnameBundle\EventSubscriber;
 
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsDoctrineListener;
@@ -7,6 +9,7 @@ use Doctrine\ORM\Event\PrePersistEventArgs;
 use Doctrine\ORM\Event\PreUpdateEventArgs;
 use Doctrine\ORM\Events;
 use Doctrine\Persistence\ObjectManager;
+use Monolog\Attribute\WithMonologChannel;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\PropertyAccess\Exception\UninitializedPropertyException;
@@ -17,11 +20,12 @@ use Tourze\DoctrineHostnameBundle\Attribute\UpdatedInHostColumn;
 
 #[AsDoctrineListener(event: Events::prePersist, priority: -99)]
 #[AsDoctrineListener(event: Events::preUpdate, priority: -99)]
-class HostListener implements EntityCheckerInterface
+#[WithMonologChannel(channel: 'doctrine_hostname')]
+readonly class HostListener implements EntityCheckerInterface
 {
     public function __construct(
-        #[Autowire(service: 'doctrine-host.property-accessor')] private readonly PropertyAccessor $propertyAccessor,
-        private readonly ?LoggerInterface $logger = null,
+        #[Autowire(service: 'doctrine-host.property-accessor')] private PropertyAccessor $propertyAccessor,
+        private LoggerInterface $logger,
     ) {
     }
 
@@ -34,13 +38,13 @@ class HostListener implements EntityCheckerInterface
     {
         $reflection = $objectManager->getClassMetadata($entity::class)->getReflectionClass();
         foreach ($reflection->getProperties(\ReflectionProperty::IS_PRIVATE) as $property) {
-            if (empty($property->getAttributes(CreatedInHostColumn::class))) {
+            if ([] === $property->getAttributes(CreatedInHostColumn::class)) {
                 continue;
             }
 
             try {
                 $oldValue = $this->propertyAccessor->getValue($entity, $property->getName());
-                if ($oldValue !== null && $oldValue !== '' && $oldValue !== false) {
+                if (null !== $oldValue && '' !== $oldValue && false !== $oldValue) {
                     continue;
                 }
             } catch (UninitializedPropertyException $exception) {
@@ -49,7 +53,7 @@ class HostListener implements EntityCheckerInterface
             }
 
             $hostname = gethostname();
-            $this->logger?->debug('设置创建host', [
+            $this->logger->debug('设置创建host', [
                 'className' => get_class($entity),
                 'entity' => $entity,
                 'time' => $hostname,
@@ -62,7 +66,7 @@ class HostListener implements EntityCheckerInterface
     public function preUpdate(PreUpdateEventArgs $args): void
     {
         // 如果数据都没变化，那我们也没必要更新时间
-        if (empty($args->getEntityChangeSet())) {
+        if ([] === $args->getEntityChangeSet()) {
             return;
         }
         $this->preUpdateEntity($args->getObjectManager(), $args->getObject(), $args);
@@ -72,11 +76,11 @@ class HostListener implements EntityCheckerInterface
     {
         $reflection = $objectManager->getClassMetadata($entity::class)->getReflectionClass();
         foreach ($reflection->getProperties(\ReflectionProperty::IS_PRIVATE) as $property) {
-            if (empty($property->getAttributes(UpdatedInHostColumn::class))) {
+            if ([] === $property->getAttributes(UpdatedInHostColumn::class)) {
                 continue;
             }
             $hostname = gethostname();
-            $this->logger?->debug('设置更新host', [
+            $this->logger->debug('设置更新host', [
                 'className' => get_class($entity),
                 'entity' => $entity,
                 'time' => $hostname,

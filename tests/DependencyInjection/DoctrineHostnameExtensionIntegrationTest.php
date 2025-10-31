@@ -2,47 +2,70 @@
 
 namespace Tourze\DoctrineHostnameBundle\Tests\DependencyInjection;
 
+use PHPUnit\Framework\Attributes\CoversClass;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\PropertyAccess\PropertyAccessor;
+use Tourze\DoctrineHostnameBundle\DependencyInjection\DoctrineHostnameExtension;
 use Tourze\DoctrineHostnameBundle\EventSubscriber\HostListener;
-use Tourze\DoctrineHostnameBundle\Tests\IntegrationTestCase;
+use Tourze\PHPUnitSymfonyUnitTest\AbstractDependencyInjectionExtensionTestCase;
 
-class DoctrineHostnameExtensionIntegrationTest extends IntegrationTestCase
+/**
+ * @internal
+ */
+#[CoversClass(DoctrineHostnameExtension::class)]
+final class DoctrineHostnameExtensionIntegrationTest extends AbstractDependencyInjectionExtensionTestCase
 {
-    public function test_hostListener_isRegisteredAsService(): void
-    {
-        // Act
-        $hostListener = static::getContainer()->get(HostListener::class);
+    private DoctrineHostnameExtension $extension;
 
-        // Assert
-        $this->assertInstanceOf(HostListener::class, $hostListener);
+    private ContainerBuilder $container;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->extension = new DoctrineHostnameExtension();
+        $this->container = new ContainerBuilder();
+        $this->container->setParameter('kernel.environment', 'test');
     }
 
-    public function test_propertyAccessor_isRegisteredAsService(): void
+    public function testHostListenerIsRegisteredAsService(): void
     {
         // Act
-        $propertyAccessor = static::getContainer()->get('doctrine-host.property-accessor');
+        $this->extension->load([], $this->container);
 
         // Assert
-        $this->assertInstanceOf(PropertyAccessor::class, $propertyAccessor);
+        $this->assertTrue($this->container->hasDefinition(HostListener::class));
     }
 
-    public function test_hostListener_isAutowiredCorrectly(): void
+    public function testPropertyAccessorIsRegisteredAsService(): void
     {
         // Act
-        $hostListener = static::getContainer()->get(HostListener::class);
+        $this->extension->load([], $this->container);
 
         // Assert
-        $this->assertInstanceOf(HostListener::class, $hostListener);
-        // 验证监听器已正确配置
-        $this->assertNotNull($hostListener);
+        $this->assertTrue($this->container->hasDefinition('doctrine-host.property-accessor'));
+
+        $definition = $this->container->getDefinition('doctrine-host.property-accessor');
+        $this->assertEquals(PropertyAccessor::class, $definition->getClass());
     }
 
-    public function test_allRequiredServices_areAvailable(): void
+    public function testHostListenerIsAutowiredCorrectly(): void
     {
-        $container = static::getContainer();
+        // Act
+        $this->extension->load([], $this->container);
+
+        // Assert
+        $definition = $this->container->getDefinition(HostListener::class);
+        $this->assertTrue($definition->isAutowired());
+        $this->assertTrue($definition->isAutoconfigured());
+    }
+
+    public function testAllRequiredServicesAreAvailable(): void
+    {
+        // Act
+        $this->extension->load([], $this->container);
 
         // Assert - 验证所有必需的服务都已注册
-        $this->assertTrue($container->has(HostListener::class));
-        $this->assertTrue($container->has('doctrine-host.property-accessor'));
+        $this->assertTrue($this->container->hasDefinition(HostListener::class));
+        $this->assertTrue($this->container->hasDefinition('doctrine-host.property-accessor'));
     }
 }

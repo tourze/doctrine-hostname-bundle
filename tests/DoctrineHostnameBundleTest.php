@@ -1,18 +1,19 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tourze\DoctrineHostnameBundle\Tests;
 
-use PHPUnit\Framework\TestCase;
-use Tourze\DoctrineEntityCheckerBundle\DoctrineEntityCheckerBundle;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Tourze\DoctrineHostnameBundle\DoctrineHostnameBundle;
+use Tourze\PHPUnitSymfonyKernelTest\AbstractBundleTestCase;
 
-class DoctrineHostnameBundleTest extends TestCase
+/**
+ * @internal
+ */
+#[CoversClass(DoctrineHostnameBundle::class)]
+#[RunTestsInSeparateProcesses]
+final class DoctrineHostnameBundleTest extends AbstractBundleTestCase
 {
-    public function testBundleDependencies(): void
-    {
-        $dependencies = DoctrineHostnameBundle::getBundleDependencies();
-
-        $this->assertArrayHasKey(DoctrineEntityCheckerBundle::class, $dependencies);
-        $this->assertEquals(['all' => true], $dependencies[DoctrineEntityCheckerBundle::class]);
-    }
 }

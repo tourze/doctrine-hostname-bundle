@@ -1,47 +1,44 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tourze\DoctrineHostnameBundle\Tests\EventSubscriber;
 
+use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Event\PreUpdateEventArgs;
-use Doctrine\ORM\Mapping\ClassMetadata;
-use Doctrine\Persistence\ObjectManager;
-use PHPUnit\Framework\MockObject\MockObject;
-use ReflectionClass;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Tourze\DoctrineHostnameBundle\Attribute\CreatedInHostColumn;
 use Tourze\DoctrineHostnameBundle\Attribute\UpdatedInHostColumn;
 use Tourze\DoctrineHostnameBundle\EventSubscriber\HostListener;
-use Tourze\DoctrineHostnameBundle\Tests\IntegrationTestCase;
+use Tourze\DoctrineHostnameBundle\Tests\Fixtures\CreatedInHostEntityInterface;
+use Tourze\DoctrineHostnameBundle\Tests\Fixtures\MockClassMetadata;
+use Tourze\DoctrineHostnameBundle\Tests\Fixtures\MockEntityManager;
+use Tourze\DoctrineHostnameBundle\Tests\Fixtures\UpdatedInHostEntityInterface;
+use Tourze\PHPUnitSymfonyKernelTest\AbstractEventSubscriberTestCase;
 
-class HostListenerSimpleIntegrationTest extends IntegrationTestCase
+/**
+ * @internal
+ */
+#[CoversClass(HostListener::class)]
+#[RunTestsInSeparateProcesses]
+final class HostListenerSimpleIntegrationTest extends AbstractEventSubscriberTestCase
 {
     private HostListener $hostListener;
 
-    public function test_hostListener_isAutowiredCorrectly(): void
+    /**
+     * 创建一个实现了CreatedInHostEntityInterface的stub对象
+     */
+    private function createCreatedInHostEntityStub(?string $initialValue = null): CreatedInHostEntityInterface
     {
-        // Assert
-        $this->assertInstanceOf(HostListener::class, $this->hostListener);
-        $this->assertNotNull($this->hostListener);
-    }
-
-    public function test_prePersist_withMockEntity_setsHostnameCorrectly(): void
-    {
-        // Arrange
-        $entity = $this->createMockEntityWithCreatedInHostColumn();
-        $objectManager = $this->createMockObjectManager($entity::class);
-
-        // Act
-        $this->hostListener->prePersistEntity($objectManager, $entity);
-
-        // Assert
-        $this->assertNotNull($entity->getCreatedInHost());
-        $this->assertEquals(gethostname(), $entity->getCreatedInHost());
-    }
-
-    private function createMockEntityWithCreatedInHostColumn(): object
-    {
-        return new class() {
+        return new class($initialValue) implements CreatedInHostEntityInterface {
             #[CreatedInHostColumn]
             private ?string $createdInHost = null;
+
+            public function __construct(?string $initialValue = null)
+            {
+                $this->createdInHost = $initialValue;
+            }
 
             public function getCreatedInHost(): ?string
             {
@@ -55,42 +52,19 @@ class HostListenerSimpleIntegrationTest extends IntegrationTestCase
         };
     }
 
-    private function createMockObjectManager(string $entityClass): ObjectManager&MockObject
+    /**
+     * 创建一个实现了UpdatedInHostEntityInterface的stub对象
+     */
+    private function createUpdatedInHostEntityStub(?string $initialValue = null): UpdatedInHostEntityInterface
     {
-        $objectManager = $this->createMock(ObjectManager::class);
-        $classMetadata = $this->createMock(ClassMetadata::class);
-        $reflectionClass = new ReflectionClass($entityClass);
-
-        $classMetadata->method('getReflectionClass')
-            ->willReturn($reflectionClass);
-
-        $objectManager->method('getClassMetadata')
-            ->with($entityClass)
-            ->willReturn($classMetadata);
-
-        return $objectManager;
-    }
-
-    public function test_preUpdate_withMockEntity_setsHostnameCorrectly(): void
-    {
-        // Arrange
-        $entity = $this->createMockEntityWithUpdatedInHostColumn();
-        $objectManager = $this->createMockObjectManager($entity::class);
-        $eventArgs = $this->createMockPreUpdateEventArgs($entity, $objectManager);
-
-        // Act
-        $this->hostListener->preUpdateEntity($objectManager, $entity, $eventArgs);
-
-        // Assert
-        $this->assertNotNull($entity->getUpdatedInHost());
-        $this->assertEquals(gethostname(), $entity->getUpdatedInHost());
-    }
-
-    private function createMockEntityWithUpdatedInHostColumn(): object
-    {
-        return new class() {
+        return new class($initialValue) implements UpdatedInHostEntityInterface {
             #[UpdatedInHostColumn]
             private ?string $updatedInHost = null;
+
+            public function __construct(?string $initialValue = null)
+            {
+                $this->updatedInHost = $initialValue;
+            }
 
             public function getUpdatedInHost(): ?string
             {
@@ -104,35 +78,103 @@ class HostListenerSimpleIntegrationTest extends IntegrationTestCase
         };
     }
 
-    private function createMockPreUpdateEventArgs(object $entity, ObjectManager $objectManager): PreUpdateEventArgs&MockObject
+    public function testHostListenerIsAutowiredCorrectly(): void
     {
-        $eventArgs = $this->createMock(PreUpdateEventArgs::class);
-        $eventArgs->method('getObject')->willReturn($entity);
-        $eventArgs->method('getObjectManager')->willReturn($objectManager);
-
-        return $eventArgs;
+        // Assert
+        $this->assertNotNull($this->hostListener);
     }
 
-    public function test_prePersist_withExistingValue_doesNotOverwrite(): void
+    public function testPrePersistWithMockEntitySetsHostnameCorrectly(): void
     {
         // Arrange
-        $entity = $this->createMockEntityWithCreatedInHostColumn();
-        $predefinedHost = 'predefined.host';
-        $entity->setCreatedInHost($predefinedHost);
-
-        $objectManager = $this->createMockObjectManager($entity::class);
+        $entity = $this->createCreatedInHostEntityStub();
+        $entityManager = $this->createMockEntityManager($entity);
 
         // Act
-        $this->hostListener->prePersistEntity($objectManager, $entity);
+        $this->hostListener->prePersistEntity($entityManager, $entity);
+
+        // Assert
+        $this->assertNotNull($entity->getCreatedInHost());
+        $this->assertEquals(gethostname(), $entity->getCreatedInHost());
+    }
+
+    private function createMockEntityManager(object $entity): EntityManagerInterface
+    {
+        $classMetadata = new MockClassMetadata($entity);
+
+        return new MockEntityManager($classMetadata);
+    }
+
+    public function testPreUpdateWithMockEntitySetsHostnameCorrectly(): void
+    {
+        // Arrange
+        $entity = $this->createUpdatedInHostEntityStub();
+        $entityManager = $this->createMockEntityManager($entity);
+        $eventArgs = $this->createMockPreUpdateEventArgs($entity, $entityManager);
+
+        // Act
+        $this->hostListener->preUpdateEntity($entityManager, $entity, $eventArgs);
+
+        // Assert
+        $this->assertNotNull($entity->getUpdatedInHost());
+        $this->assertEquals(gethostname(), $entity->getUpdatedInHost());
+    }
+
+    private function createMockPreUpdateEventArgs(object $entity, EntityManagerInterface $entityManager): PreUpdateEventArgs
+    {
+        // PreUpdateEventArgs 需要 changeSet 参数，这里模拟一个实际的更改
+        $changeSet = ['someField' => ['oldValue', 'newValue']];
+
+        return new PreUpdateEventArgs($entity, $entityManager, $changeSet);
+    }
+
+    public function testPrePersistWithExistingValueDoesNotOverwrite(): void
+    {
+        // Arrange
+        $entity = $this->createCreatedInHostEntityStub('predefined.host');
+        $predefinedHost = 'predefined.host';
+
+        $entityManager = $this->createMockEntityManager($entity);
+
+        // Act
+        $this->hostListener->prePersistEntity($entityManager, $entity);
 
         // Assert
         $this->assertEquals($predefinedHost, $entity->getCreatedInHost());
         $this->assertNotEquals(gethostname(), $entity->getCreatedInHost());
     }
 
-    protected function setUp(): void
+    public function testPrePersistEntity(): void
     {
-        parent::setUp();
-        $this->hostListener = static::getContainer()->get(HostListener::class);
+        // Arrange
+        $entity = $this->createCreatedInHostEntityStub();
+        $entityManager = $this->createMockEntityManager($entity);
+
+        // Act
+        $this->hostListener->prePersistEntity($entityManager, $entity);
+
+        // Assert
+        $this->assertNotNull($entity->getCreatedInHost());
+        $this->assertEquals(gethostname(), $entity->getCreatedInHost());
+    }
+
+    public function testPreUpdateEntity(): void
+    {
+        // Arrange
+        $entity = $this->createUpdatedInHostEntityStub();
+        $entityManager = $this->createMockEntityManager($entity);
+        $eventArgs = $this->createMockPreUpdateEventArgs($entity, $entityManager);
+
+        // Act
+        $this->hostListener->preUpdateEntity($entityManager, $entity, $eventArgs);
+
+        // Assert
+        $this->assertNotNull($entity->getUpdatedInHost());
+        $this->assertEquals(gethostname(), $entity->getUpdatedInHost());
+    }
+
+    protected function onSetUp(): void
+    {
+        $this->hostListener = self::getService(HostListener::class);
     }
 }

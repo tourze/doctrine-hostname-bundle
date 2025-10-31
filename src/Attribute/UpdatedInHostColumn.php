@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tourze\DoctrineHostnameBundle\Attribute;
 
 /**
  * 记录修改时hostname
  */
-#[\Attribute(\Attribute::TARGET_PROPERTY)]
+#[\Attribute(flags: \Attribute::TARGET_PROPERTY)]
 class UpdatedInHostColumn
 {
 }

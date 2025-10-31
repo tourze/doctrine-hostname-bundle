@@ -2,10 +2,15 @@
 
 namespace Tourze\DoctrineHostnameBundle\Tests\Attribute;
 
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Tourze\DoctrineHostnameBundle\Attribute\CreatedInHostColumn;
 
-class CreatedInHostColumnTest extends TestCase
+/**
+ * @internal
+ */
+#[CoversClass(CreatedInHostColumn::class)]
+final class CreatedInHostColumnTest extends TestCase
 {
     public function testAttributeCanBeCreated(): void
     {
